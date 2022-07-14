@@ -1,18 +1,15 @@
-FROM python:3.10-alpine
+FROM python:3.10
 
 
 RUN mkdir app
 WORKDIR /app
 
 # System Dependencies
-RUN apk update && apk add build-base bash gcc libc-dev make libffi-dev openssl-dev python3-dev
+RUN apt-get update && apt-get install -y bash gcc libc-dev make libffi-dev python3-dev librdkafka-dev
 
 # App dependencies
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY gunicorn.conf.py .
 COPY api /app/api
-
-# Entry point
-CMD ["gunicorn", "api.main:app"]

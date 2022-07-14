@@ -5,6 +5,7 @@ services:
         container_name: cloud_api
         build:
             context: .
+        command: bash -c "gunicorn api.api:app"
         ports:
             - "5000:5000"
         environment:
@@ -17,6 +18,23 @@ services:
             - /app/data
         depends_on:
             - cloud_db
+    
+    cloud_collector:
+        container_name: cloud_collector
+        build:
+            context: .
+        command: bash -c "python -m api.collector"
+        depends_on:
+            - kafka
+    
+    cloud_processor:
+        container_name: cloud_processor
+        build:
+            context: .
+        command: bash -c "python -m api.processor"
+        depends_on:
+            - kafka
+            - cloud_db
 
     cloud_db:
         container_name: cloud_db
@@ -26,3 +44,44 @@ services:
         - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS}
         ports:
         - "27017:27017"
+
+    zookeeper:
+        image: confluentinc/cp-zookeeper:latest
+        networks: 
+            - broker-kafka
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+            ZOOKEEPER_TICK_TIME: 2000
+
+    kafka:
+        image: confluentinc/cp-kafka:latest
+        networks: 
+            - broker-kafka
+        depends_on:
+            - zookeeper
+        ports:
+            - 9092:9092
+        environment:
+            KAFKA_BROKER_ID: 1
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+            KAFKA_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://0.0.0.0:9092 
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092 
+            KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+    kafdrop:
+        image: obsidiandynamics/kafdrop:latest
+        networks: 
+            - broker-kafka
+        depends_on:
+            - kafka
+        ports:
+            - 19000:9000
+        environment:
+            KAFKA_BROKERCONNECT: kafka:29092
+
+networks: 
+  broker-kafka:
+    driver: bridge 
+
