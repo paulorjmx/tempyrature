@@ -32,7 +32,10 @@ def main():
             logger.debug(s)
             city, temp = s.split()
 
-            db_city.insert_one({"city": city, "temp": temp})                
+            if db_city.find_one({"city": city}):
+                db_city.update_one({"city": city}, {"temp": temp})
+            else:
+                db_city.insert_one({"city": city, "temp": temp})                
 
 
 if __name__ == '__main__':
